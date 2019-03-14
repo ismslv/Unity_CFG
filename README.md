@@ -3,6 +3,8 @@ A simple class to store different settings in .ini (or any other extension) plai
 
 Version 1.1 supports the following data formats: string, int, float, bool, string/int/float arrays and lists, Vector2, Vector2Int, Vector3 and random between two (see the usage example).
 
+During testing, you can change settings and update them in game with `LoadConfig()` command (for example, from the Console).
+
 Store settings in .ini file like this:
 ```
 //Config.ini
