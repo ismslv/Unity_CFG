@@ -26,7 +26,7 @@ Setting2 = 2.1
 #<
 ```
 
-## Special words
+## Spells
 ```
 #name Hardcore
 ```
