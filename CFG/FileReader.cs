@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 
+namespace FMLHT.Config {
+
 public static class FileReader
 {
     public static void Read(string file, System.Action<string> action)
@@ -28,4 +30,6 @@ public static class FileReader
             writer.WriteLine(line);
         writer.Close();
     }
+}
+
 }

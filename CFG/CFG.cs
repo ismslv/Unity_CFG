@@ -1,9 +1,11 @@
 ﻿/* CONFIG FILE READER
  * READS, PARSES AND STORES
- * DATA FROM CLASSIC .INI FILES
- * V1.1
- * FMLHT, 23.11.2018
+ * DATA FROM *.FMCFG FILES
+ * V1.2
+ * FMLHT, 03.04.2019
  */
+
+namespace FMLHT.Config {
 
 using System.Collections;
 using System.Collections.Generic;
@@ -18,6 +20,7 @@ public static class CFG
     static Dictionary<string, float> cfgFloat;
     static Dictionary<string, string> cfgString;
     static List<string> cfgNames;
+    public static string commentDivider = "#";
 
     public static bool B(string name)
     {
@@ -186,7 +189,7 @@ public static class CFG
                 key = lineSrc[0].Trim();
                 val = lineSrc[1].Trim();
 
-                string[] val_ = val.Split(new string[] {"//"}, System.StringSplitOptions.None);
+                string[] val_ = val.Split(new string[] {commentDivider}, System.StringSplitOptions.None);
                 val = val_[0];
 
                 if (clear)
@@ -239,5 +242,7 @@ public static class CFG
         }
         FileReader.Write(path, list);
     }
+
+}
 
 }

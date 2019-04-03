@@ -1,19 +1,23 @@
-﻿//Uncomment if console is installed
-//#define CONSOLE
+﻿#define CONSOLE
 
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.IO;
+
+namespace FMLHT.Config {
 
 public class CFGLoader : MonoBehaviour {
 
-    public string configFile = "Settings";
-    static string _configFile;
+    public string configFile = "Config";
+    public string extension = "fmcfg";
+    public bool loadAdditional = true;
+    public bool loadOnAwake = true;
 
     private void Awake()
     {
-        _configFile = configFile;
-        LoadConfig();
+        if (loadOnAwake)
+            LoadConfig();
     }
 
     private void Start()
@@ -25,14 +29,25 @@ public class CFGLoader : MonoBehaviour {
             response = "Reloaded configuration!",
             action = (s) =>
             {
-                CFGLoader.LoadConfig();
+                LoadConfig();
             }
         });
 #endif
     }
 
-    public static void LoadConfig()
+    public void LoadConfig()
     {
-        CFG.Load(Application.dataPath + "/" + _configFile + ".ini");
+        string cfgMain = UnityEngine.Application.dataPath + "/" + configFile + "." + extension;
+        CFG.Load(cfgMain);
+        if (loadAdditional) {
+            var files = Directory.GetFiles(UnityEngine.Application.dataPath + "/", configFile + "*" + "." + extension);
+            foreach (var file in files) {
+                if (file != cfgMain) {
+                    CFG.LoadAdditional(file);
+                }
+            }
+        }
     }
+}
+
 }
