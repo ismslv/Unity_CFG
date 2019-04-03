@@ -23,9 +23,19 @@ public class CFGLoader : MonoBehaviour {
     private void Start()
     {
 #if CONSOLE
+        Console.Register(new FMLHT.Command() {
+            name = "cfg_new",
+            arguments = 1,
+            argumentsText = "config name",
+            toHideAfter = true,
+            action = a => {
+                NewConfig(a[1]);
+            }
+        });
+
         Console.Register(new Command()
         {
-            name = "cfgreload",
+            name = "cfg_reload",
             response = "Reloaded configuration!",
             action = (s) =>
             {
@@ -46,6 +56,15 @@ public class CFGLoader : MonoBehaviour {
                     CFG.LoadAdditional(file);
                 }
             }
+        }
+    }
+
+    public void NewConfig(string name) {
+        string nameFull = UnityEngine.Application.dataPath + "/" + configFile + "_" + name + "." + extension;
+        if (!File.Exists(nameFull)) {
+            File.WriteAllText(nameFull, "#name " + name);
+        } else {
+            Console.Say("Already exists!", true);
         }
     }
 }

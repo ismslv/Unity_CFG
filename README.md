@@ -1,10 +1,11 @@
 # Unity_CFG
 A simple class to store different settings in .ini (or any other extension) plain text format.
 
-Version 1.2 supports the following data formats: string, int, float, bool, string/int/float arrays and lists, Vector2, Vector2Int, Vector3 and random between two (see the usage example).
+Version 1.3 supports the following data formats: string, int, float, bool, string/int/float arrays and lists, Vector2, Vector2Int, Vector3 and random between two (see the usage example).
 
 During testing, you can change settings and update them in game with `LoadConfig()` command (for example, from the Console).
 
+#Usage
 Store settings in .fmcfg file like this:
 ```
 #Config.fmcfg
@@ -24,6 +25,22 @@ Setting2 = 2.1
 #<
 ```
 
+##Special words
+```
+#name Hardcore
+```
+
+Defines a config name to show in the debugger
+
+```
+#stop
+```
+
+Stops config reading at this line.
+
+If placed on top, disables all file and does not register it's name.
+
+##Adding to a project
 To get these settings,
 add CFGLoader component and call it:
 

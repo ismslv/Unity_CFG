@@ -1,7 +1,7 @@
 ﻿/* CONFIG FILE READER
  * READS, PARSES AND STORES
  * DATA FROM *.FMCFG FILES
- * V1.2
+ * V1.3
  * FMLHT, 03.04.2019
  */
 
@@ -20,6 +20,8 @@ public static class CFG
     static Dictionary<string, float> cfgFloat;
     static Dictionary<string, string> cfgString;
     static List<string> cfgNames;
+    static List<string> cfgFiles;
+
     public static string commentDivider = "#";
 
     public static bool B(string name)
@@ -136,6 +138,7 @@ public static class CFG
         cfgFloat = new Dictionary<string, float>();
         cfgString = new Dictionary<string, string>();
         cfgNames = new List<string>();
+        cfgFiles = new List<string>();
     }
 
     public static void InsertBoolRaw(string name, string value)
@@ -174,6 +177,23 @@ public static class CFG
         return cfgNames.FindAll((n) => { return n.Contains(word); });
     }
 
+    public static bool ParseVariables(string val) {
+        var val_ = val.Split(" "[0]);
+        switch (val_[0]) {
+            case "name":
+                if (val_.Length > 1)
+                    cfgFiles.Add(val_[1]);
+                break;
+            case "stop":
+                return false;
+        }
+        return true;
+    }
+
+    public static string AllFilesNames() {
+        return System.String.Join(", ", cfgFiles);
+    }
+
     public static void Load(string file, bool clear = true)
     {
         if (clear)
@@ -182,10 +202,10 @@ public static class CFG
         {
             string key;
             string val;
-            string[] lineSrc = line.Split(';');
-            lineSrc = lineSrc[0].Split('=');
+            string[] lineSrc = line.Split('=');
             if (lineSrc.Length > 1)
             {
+                //if variable line
                 key = lineSrc[0].Trim();
                 val = lineSrc[1].Trim();
 
@@ -224,7 +244,15 @@ public static class CFG
                         }
                     }
                 }
+            } else if (lineSrc.Length == 1) {
+                //if comment line
+                key = lineSrc[0].Trim();
+                string[] key_ = key.Split(new string[] {commentDivider}, System.StringSplitOptions.None);
+                if (key_.Length == 2) {
+                    return ParseVariables(key_[1]);
+                }
             }
+            return true;
         });
     }
 
