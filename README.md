@@ -5,7 +5,8 @@ Version 1.3 supports the following data formats: string, int, float, bool, strin
 
 During testing, you can change settings and update them in game with `LoadConfig()` command (for example, from the Console).
 
-#Usage
+## Usage
+
 Store settings in .fmcfg file like this:
 ```
 #Config.fmcfg
@@ -25,7 +26,7 @@ Setting2 = 2.1
 #<
 ```
 
-##Special words
+## Special words
 ```
 #name Hardcore
 ```
@@ -40,7 +41,7 @@ Stops config reading at this line.
 
 If placed on top, disables all file and does not register it's name.
 
-##Adding to a project
+## Adding to a project
 To get these settings,
 add CFGLoader component and call it:
 
