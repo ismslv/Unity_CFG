@@ -16,7 +16,7 @@ HeroStartHealth = 0.1:0.9
 ```
 
 To be able to fold regions in VSCode
-(using https://marketplace.visualstudio.com/items?itemName=FMLHT.fmcfg&ssr=false#overview)
+(using https://marketplace.visualstudio.com/items?itemName=FMLHT.fmcfg)
 ```
 #> World settings
 Setting1 = 1
