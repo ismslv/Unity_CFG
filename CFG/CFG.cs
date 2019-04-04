@@ -1,276 +1,879 @@
 ﻿/* CONFIG FILE READER
  * READS, PARSES AND STORES
  * DATA FROM *.FMCFG FILES
- * V1.3
- * FMLHT, 03.04.2019
+ * V1.4
+ * FMLHT, 04.04.2019
  */
 
-namespace FMLHT.Config {
-
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using System.IO;
-
-public static class CFG
+namespace FMLHT.Config
 {
+    using System.Collections;
+    using System.Collections.Generic;
+    using UnityEngine;
+    using System.IO;
+    using System.Linq;
 
-    static Dictionary<string, bool> cfgBool;
-    static Dictionary<string, int> cfgInt;
-    static Dictionary<string, float> cfgFloat;
-    static Dictionary<string, string> cfgString;
-    static List<string> cfgNames;
-    static List<string> cfgFiles;
-
-    public static string commentDivider = "#";
-
-    public static bool B(string name)
+    public static class CFG
     {
-        return cfgBool[name];
-    }
+        static List<string> cfgFiles;
+        static Container container;
+        static string[] boolsTrue = new string[] { "true", "yes", "ok", "da", "oui", "y" };
+        static string[] boolsFalse = new string[] { "false", "no", "net", "non", "n" };
+        public static string commentDivider = "#";
 
-    public static int I(string name)
-    {
-        if (cfgInt.ContainsKey(name))
+        public class Container
         {
-            return cfgInt[name];
-        } else
-        {
-            return Mathf.RoundToInt(cfgFloat[name]);
-        }
-    }
-
-    public static float F(string name)
-    {
-        if (cfgFloat.ContainsKey(name))
-        {
-            return cfgFloat[name];
-        } else
-        {
-            return (float)cfgInt[name];
-        }
-    }
-
-    public static string S(string name)
-    {
-        return cfgString[name];
-    }
-
-    public static string[] AS(string name)
-    {
-        string[] _as = cfgString[name].Split(',');
-        for (int i = 0; i < _as.Length; i++)
-            _as[i] = _as[i].Trim();
-        return _as;
-    }
-
-    public static List<string> LS(string name)
-    {
-        return new List<string>(AS(name));
-    }
-
-    public static int[] AI(string name)
-    {
-        string[] listS = cfgString[name].Split(',');
-        int[] listI = new int[listS.Length];
-        for (int i = 0; i < listS.Length; i++)
-        {
-            listI[i] = int.Parse(listS[i]);
-        }
-        return listI;
-    }
-
-    public static List<int> LI(string name)
-    {
-        return new List<int>(AI(name));
-    }
-
-    public static float[] AF(string name)
-    {
-        string[] listS = cfgString[name].Split(',');
-        float[] listI = new float[listS.Length];
-        for (int i = 0; i < listS.Length; i++)
-        {
-            listI[i] = float.Parse(listS[i]);
-        }
-        return listI;
-    }
-
-    public static List<float> LF(string name)
-    {
-        return new List<float>(AF(name));
-    }
-
-    public static Vector2 V2(string name)
-    {
-        string[] listV = cfgString[name].Split(':');
-        return new Vector2(float.Parse(listV[0]), float.Parse(listV[1]));
-    }
-
-    public static Vector2Int V2I(string name)
-    {
-        string[] listV = cfgString[name].Split(':');
-        return new Vector2Int(int.Parse(listV[0]), int.Parse(listV[1]));
-    }
-
-    public static float V2Rand(string name)
-    {
-        string[] listV = cfgString[name].Split(':');
-        return Random.Range(float.Parse(listV[0]), float.Parse(listV[1]));
-    }
-
-    public static int V2RandI(string name)
-    {
-        string[] listV = cfgString[name].Split(':');
-        return Random.Range(int.Parse(listV[0]), int.Parse(listV[1]) + 1);
-    }
-
-    public static Vector3 V3(string name)
-    {
-        float[] lF = AF(name);
-        return new Vector3(lF[0], lF[1], lF[2]);
-    }
-
-    public static void Clear()
-    {
-        cfgBool = new Dictionary<string, bool>();
-        cfgInt = new Dictionary<string, int>();
-        cfgFloat = new Dictionary<string, float>();
-        cfgString = new Dictionary<string, string>();
-        cfgNames = new List<string>();
-        cfgFiles = new List<string>();
-    }
-
-    public static void InsertBoolRaw(string name, string value)
-    {
-        if (value.ToLower() == "true")
-        {
-            cfgBool[name] = true;
-        }
-        else
-        {
-            cfgBool[name] = false;
-        }
-    }
-
-    public static void InsertIntRaw(string name, string value)
-    {
-        cfgInt[name] = int.Parse(value);
-    }
-
-    public static void InsertFloatRaw(string name, string value)
-    {
-        cfgFloat[name] = float.Parse(value);
-    }
-
-    public static void InsertStringRaw(string name, string value)
-    {
-        if (value[0] == '\"' || value[0] == '\'')
-            value = value.Substring(1, value.Length - 1);
-        if (value[value.Length - 1] == '\"' || value[value.Length - 1] == '\'')
-            value = value.Substring(0, value.Length - 1);
-        cfgString[name] = value;
-    }
-
-    public static List<string> FindNameByWord(string word)
-    {
-        return cfgNames.FindAll((n) => { return n.Contains(word); });
-    }
-
-    public static bool ParseVariables(string val) {
-        var val_ = val.Split(" "[0]);
-        switch (val_[0]) {
-            case "name":
-                if (val_.Length > 1)
-                    cfgFiles.Add(val_[1]);
-                break;
-            case "stop":
-                return false;
-        }
-        return true;
-    }
-
-    public static string AllFilesNames() {
-        return System.String.Join(", ", cfgFiles);
-    }
-
-    public static void Load(string file, bool clear = true)
-    {
-        if (clear)
-            Clear();
-        FileReader.Read(file, (line) =>
-        {
-            string key;
-            string val;
-            string[] lineSrc = line.Split('=');
-            if (lineSrc.Length > 1)
+            public Dictionary<string, Item> items;
+            public Container()
             {
-                //if variable line
-                key = lineSrc[0].Trim();
-                val = lineSrc[1].Trim();
-
-                string[] val_ = val.Split(new string[] {commentDivider}, System.StringSplitOptions.None);
-                val = val_[0];
-
-                if (clear)
-                    cfgNames.Add(key);
-                if (val[0] == '\"' || val[0] == '\'')
+                items = new Dictionary<string, Item>();
+            }
+            public void Add<T>(string name, T value)
+            {
+                items[name] = CreateItem<T>(value);
+            }
+            public void AddItem(string name, Item item)
+            {
+                items[name] = item;
+            }
+            public bool Has(string name)
+            {
+                return items.ContainsKey(name);
+            }
+            public bool Has<T>(string name)
+            {
+                return items[name].Type == typeof(T);
+            }
+            public T GetValue<T>(string name)
+            {
+                var item = items[name];
+                return (items[name] as ItemPayload<T>).Payload;
+            }
+            public bool TryGet(string name, out Item item)
+            {
+                item = items[name];
+                return Has(name);
+            }
+            public static Item CreateItem<T>(T value)
+            {
+                return new ItemPayload<T>()
                 {
-                    InsertStringRaw(key, val);
+                    Type = typeof(T),
+                    Payload = value
+                } as Item;
+            }
+            public static Item CreateArray(int length)
+            {
+                return new ItemArray(length) as Item;
+            }
+            public class Item
+            {
+                public System.Type Type;
+                public bool IsArray = false;
+                public bool Is<T>()
+                {
+                    return this.Type == typeof(T);
+                }
+                public T GetValue<T>()
+                {
+                    return (this as ItemPayload<T>).Payload;
+                }
+            }
+            public class ItemPayload<T> : Item
+            {
+                public T Payload;
+            }
+            public class ItemArray : Item
+            {
+                public Item[] items;
+                public ItemArray(int length)
+                {
+                    items = new Item[length];
+                    IsArray = true;
+                }
+                public Item this[int i]
+                {
+                    set
+                    {
+                        items[i] = value;
+                    }
+                    get
+                    {
+                        return items[i];
+                    }
+                }
+            }
+        }
+
+        #region Public Getters
+        public static T Get<T>(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetValueOf<T>(item);
+            }
+            return ZeroValueOf<T>();
+        }
+
+        public static bool B(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetBool(item);
+            }
+            return ZeroValueOf<bool>();
+        }
+
+        public static int I(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetInt(item);
+            }
+            return ZeroValueOf<int>();
+        }
+
+        public static float F(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetFloat(item);
+            }
+            return ZeroValueOf<float>();
+        }
+
+        public static string S(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetString(item);
+            }
+            return ZeroValueOf<string>();
+        }
+
+        public static string[] AS(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetArrayOf<string>(item);
+            }
+            return ZeroValueOf<string[]>();
+        }
+
+        public static List<string> LS(string name)
+        {
+            return AS(name).ToList();
+        }
+
+        public static string RS(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetRandomFromArrayOf<string>(item);
+            }
+            return ZeroValueOf<string>();
+        }
+
+        public static int[] AI(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetArrayOf<int>(item);
+            }
+            return ZeroValueOf<int[]>();
+        }
+
+        public static List<int> LI(string name)
+        {
+            return AI(name).ToList();
+        }
+
+        public static int RI(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetRandomFromArrayOf<int>(item);
+            }
+            return ZeroValueOf<int>();
+        }
+
+        public static float[] AF(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetArrayOf<float>(item);
+            }
+            return ZeroValueOf<float[]>();
+        }
+
+        public static List<float> LF(string name)
+        {
+            return LF(name).ToList();
+        }
+
+        public static float RF(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetRandomFromArrayOf<float>(item);
+            }
+            return ZeroValueOf<float>();
+        }
+
+        public static Vector2 V2(string name)
+        {
+            var v_ = AF(name);
+            var vRes = new Vector2(0f, 0f);
+            if (v_.Length > 0) vRes.x = v_[0];
+            if (v_.Length > 1) vRes.y = v_[1];
+            return vRes;
+        }
+
+        public static Vector2Int V2I(string name)
+        {
+            var v_ = AI(name);
+            var vRes = new Vector2Int(0, 0);
+            if (v_.Length > 0) vRes.x = v_[0];
+            if (v_.Length > 1) vRes.y = v_[1];
+            return vRes;
+        }
+
+        public static float V2Rand(string name)
+        {
+            var v_ = V2(name);
+            return Random.Range(v_[0], v_[1]);
+        }
+
+        public static int V2RandI(string name)
+        {
+            var v_ = V2I(name);
+            return Random.Range(v_[0], v_[1]);
+        }
+
+        public static Vector3 V3(string name)
+        {
+            var v_ = AF(name);
+            var vRes = new Vector3(0f, 0f, 0f);
+            if (v_.Length > 0) vRes.x = v_[0];
+            if (v_.Length > 1) vRes.y = v_[1];
+            if (v_.Length > 2) vRes.z = v_[2];
+            return vRes;
+        }
+
+        public static Vector3 V3Int(string name)
+        {
+            var v_ = AI(name);
+            var vRes = new Vector3Int(0, 0, 0);
+            if (v_.Length > 0) vRes.x = v_[0];
+            if (v_.Length > 1) vRes.y = v_[1];
+            if (v_.Length > 2) vRes.z = v_[2];
+            return vRes;
+        }
+
+        public static bool[] AB(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetArrayOf<bool>(item);
+            }
+            return ZeroValueOf<bool[]>();
+        }
+
+        public static List<bool> LB(string name)
+        {
+            return AB(name).ToList();
+        }
+
+        public static KeyCode K(string name)
+        {
+            return GetKeyCode(container.items[name]);
+        }
+
+        public static KeyCode[] AK(string name)
+        {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetArrayOf<KeyCode>(item);
+            }
+            return ZeroValueOf<KeyCode[]>();
+        }
+
+        public static List<KeyCode> LK(string name)
+        {
+            return AK(name).ToList();
+        }
+        #endregion
+
+        #region Inner Getters
+        static T[] GetArrayOf<T>(Container.Item item)
+        {
+            if (item.IsArray)
+            {
+                var arraySrc = (item as Container.ItemArray);
+                var arrayRes = new T[arraySrc.items.Length];
+                for (int i = 0; i < arraySrc.items.Length; i++)
+                {
+                    arrayRes[i] = GetValueOf<T>(arraySrc.items[i]);
+                }
+                return arrayRes;
+            }
+            return new T[0];
+        }
+
+        static T GetValueOf<T>(Container.Item item)
+        {
+            if (typeof(T) == typeof(int))
+            {
+                return (T)System.Convert.ChangeType(GetInt(item), typeof(T));
+            }
+            else if (typeof(T) == typeof(float))
+            {
+                return (T)System.Convert.ChangeType(GetFloat(item), typeof(T));
+            }
+            else if (typeof(T) == typeof(string))
+            {
+                return (T)System.Convert.ChangeType(GetString(item), typeof(T));
+            }
+            else if (typeof(T) == typeof(bool))
+            {
+                return (T)System.Convert.ChangeType(GetBool(item), typeof(T));
+            }
+            else if (typeof(T) == typeof(KeyCode))
+            {
+                return (T)System.Convert.ChangeType(GetKeyCode(item), typeof(T));
+            }
+            else if (typeof(T) == typeof(int[]))
+            {
+                return (T)System.Convert.ChangeType(GetArrayInt(item), typeof(T));
+            }
+            else if (typeof(T) == typeof(float[]))
+            {
+                return (T)System.Convert.ChangeType(GetArrayFloat(item), typeof(T));
+            }
+            else if (typeof(T) == typeof(string[]))
+            {
+                return (T)System.Convert.ChangeType(GetArrayString(item), typeof(T));
+            }
+            else if (typeof(T) == typeof(bool[]))
+            {
+                return (T)System.Convert.ChangeType(GetArrayBool(item), typeof(T));
+            }
+            else if (typeof(T) == typeof(KeyCode[]))
+            {
+                return (T)System.Convert.ChangeType(GetArrayKeyCode(item), typeof(T));
+            }
+            return (T)System.Convert.ChangeType(GetString(item), typeof(T));
+        }
+
+        static T ZeroValueOf<T>()
+        {
+            if (typeof(T) == typeof(int))
+            {
+                return (T)System.Convert.ChangeType(0, typeof(T));
+            }
+            else if (typeof(T) == typeof(float))
+            {
+                return (T)System.Convert.ChangeType(0f, typeof(T));
+            }
+            else if (typeof(T) == typeof(string))
+            {
+                return (T)System.Convert.ChangeType("", typeof(T));
+            }
+            else if (typeof(T) == typeof(bool))
+            {
+                return (T)System.Convert.ChangeType(false, typeof(T));
+            }
+            else if (typeof(T) == typeof(KeyCode))
+            {
+                return (T)System.Convert.ChangeType(KeyCode.None, typeof(T));
+            }
+            else if (typeof(T) == typeof(int[]))
+            {
+                return (T)System.Convert.ChangeType(new int[0], typeof(T));
+            }
+            else if (typeof(T) == typeof(float[]))
+            {
+                return (T)System.Convert.ChangeType(new float[0], typeof(T));
+            }
+            else if (typeof(T) == typeof(string[]))
+            {
+                return (T)System.Convert.ChangeType(new string[0], typeof(T));
+            }
+            else if (typeof(T) == typeof(bool[]))
+            {
+                return (T)System.Convert.ChangeType(new bool[0], typeof(T));
+            }
+            else if (typeof(T) == typeof(KeyCode[]))
+            {
+                return (T)System.Convert.ChangeType(new KeyCode[0], typeof(T));
+            }
+            return (T)System.Convert.ChangeType(false, typeof(T));
+        }
+
+        static T GetRandomFromArrayOf<T>(Container.Item item)
+        {
+            var array = GetArrayOf<T>(item);
+            return array[Random.Range(0, array.Length)];
+        }
+
+        static bool GetBool(Container.Item item)
+        {
+            if (item.Is<bool>())
+            {
+                return item.GetValue<bool>();
+            }
+            if (item.Is<string>())
+            {
+                bool _bool;
+                if (TryParseBool(item.GetValue<string>(), out _bool))
+                {
+                    return _bool;
+                }
+            }
+            if (item.Is<int>())
+            {
+                return TryParseBool(item.GetValue<int>());
+            }
+            if (item.Is<float>())
+            {
+                return TryParseBool(item.GetValue<float>());
+            }
+            return ZeroValueOf<bool>();
+        }
+
+        static int GetInt(Container.Item item)
+        {
+            if (item.Is<int>())
+            {
+                return item.GetValue<int>();
+            }
+            if (item.Is<float>())
+            {
+                return Mathf.RoundToInt(item.GetValue<float>());
+            }
+            if (item.Is<string>())
+            {
+                int _int;
+                if (int.TryParse(item.GetValue<string>(), out _int))
+                {
+                    return _int;
+                }
+            }
+            return ZeroValueOf<int>();
+        }
+
+        static float GetFloat(Container.Item item)
+        {
+            if (item.Is<float>())
+            {
+                return item.GetValue<float>();
+            }
+            if (item.Is<int>())
+            {
+                return (float)item.GetValue<int>();
+            }
+            if (item.Is<string>())
+            {
+                float _float;
+                if (float.TryParse(item.GetValue<string>(), out _float))
+                {
+                    return _float;
+                }
+            }
+            return ZeroValueOf<float>();
+        }
+
+        static string GetString(Container.Item item)
+        {
+            if (item.Is<string>())
+            {
+                return item.GetValue<string>();
+            }
+            if (item.Is<int>())
+            {
+                return item.GetValue<int>().ToString();
+            }
+            if (item.Is<float>())
+            {
+                return item.GetValue<float>().ToString();
+            }
+            if (item.Is<int[]>())
+            {
+                var array = item.GetValue<int[]>();
+                var s = "";
+                for (int i = 0; i < array.Length; i++)
+                {
+                    s += i.ToString();
+                    if (i != array.Length - 1)
+                        s += ",";
+                }
+                return s;
+            }
+            if (item.Is<float[]>())
+            {
+                var array = item.GetValue<float[]>();
+                var s = "";
+                for (int i = 0; i < array.Length; i++)
+                {
+                    s += i.ToString();
+                    if (i != array.Length - 1)
+                        s += ",";
+                }
+                return s;
+            }
+            if (item.Is<string[]>())
+            {
+                return System.String.Join(", ", item.GetValue<string[]>());
+            }
+            if (item.Is<KeyCode>())
+            {
+                return item.GetValue<KeyCode>().ToString();
+            }
+            return ZeroValueOf<string>();
+        }
+
+        static KeyCode GetKeyCode(Container.Item item)
+        {
+            if (item.Is<KeyCode>())
+            {
+                return item.GetValue<KeyCode>();
+            }
+            if (item.Is<string>())
+            {
+                KeyCode _keyCode;
+                if (System.Enum.TryParse(item.GetValue<string>(), out _keyCode)) {
+                    return _keyCode;
+                }
+            }
+            return ZeroValueOf<KeyCode>();
+        }
+
+        static string[] GetArrayString(Container.Item item)
+        {
+            if (item.IsArray)
+            {
+                var arraySrc = (item as Container.ItemArray);
+                var arrayRes = new string[arraySrc.items.Length];
+                for (int i = 0; i < arraySrc.items.Length; i++)
+                {
+                    arrayRes[i] = GetString(arraySrc.items[i]);
+                }
+                return arrayRes;
+            }
+            return ZeroValueOf<string[]>();
+        }
+
+        static int[] GetArrayInt(Container.Item item)
+        {
+            if (item.IsArray)
+            {
+                var arraySrc = (item as Container.ItemArray);
+                var arrayRes = new int[arraySrc.items.Length];
+                for (int i = 0; i < arraySrc.items.Length; i++)
+                {
+                    arrayRes[i] = GetInt(arraySrc.items[i]);
+                }
+                return arrayRes;
+            }
+            return ZeroValueOf<int[]>();
+        }
+
+        static float[] GetArrayFloat(Container.Item item)
+        {
+            if (item.IsArray)
+            {
+                var arraySrc = (item as Container.ItemArray);
+                var arrayRes = new float[arraySrc.items.Length];
+                for (int i = 0; i < arraySrc.items.Length; i++)
+                {
+                    arrayRes[i] = GetFloat(arraySrc.items[i]);
+                }
+                return arrayRes;
+            }
+            return ZeroValueOf<float[]>();
+        }
+
+        static bool[] GetArrayBool(Container.Item item)
+        {
+            if (item.IsArray)
+            {
+                var arraySrc = (item as Container.ItemArray);
+                var arrayRes = new bool[arraySrc.items.Length];
+                for (int i = 0; i < arraySrc.items.Length; i++)
+                {
+                    arrayRes[i] = GetBool(arraySrc.items[i]);
+                }
+                return arrayRes;
+            }
+            return ZeroValueOf<bool[]>();
+        }
+
+        static KeyCode[] GetArrayKeyCode(Container.Item item)
+        {
+            if (item.IsArray)
+            {
+                var arraySrc = (item as Container.ItemArray);
+                var arrayRes = new KeyCode[arraySrc.items.Length];
+                for (int i = 0; i < arraySrc.items.Length; i++)
+                {
+                    arrayRes[i] = GetKeyCode(arraySrc.items[i]);
+                }
+                return arrayRes;
+            }
+            return ZeroValueOf<KeyCode[]>();
+        }
+        #endregion
+
+        #region Parsers
+        public static bool Has(string name)
+        {
+            return container.Has(name);
+        }
+
+        public static void Clear()
+        {
+            cfgFiles = new List<string>();
+            container = new Container();
+        }
+
+        public static bool ParseVariables(string val)
+        {
+            var val_ = val.Split(" "[0]);
+            switch (val_[0])
+            {
+                case "name":
+                    if (val_.Length > 1)
+                        cfgFiles.Add(val_[1]);
+                    break;
+                case "stop":
+                    return false;
+            }
+            return true;
+        }
+
+        public static Container.Item ParseSimple(string val)
+        {
+            val = val.Trim();
+            int _int;
+            if (int.TryParse(val, out _int))
+            {
+                //is int
+                return Container.CreateItem<int>(_int);
+            }
+            float _float;
+            if (float.TryParse(val, out _float))
+            {
+                //is float
+                return Container.CreateItem<float>(_float);
+            }
+            bool _bool;
+            if (TryParseBool(val, out _bool))
+            {
+                //is bool
+                return Container.CreateItem<bool>(_bool);
+            }
+            KeyCode _keyCode;
+            if (System.Enum.TryParse(val, out _keyCode))
+            {
+                //is KeyCode
+                return Container.CreateItem<KeyCode>(_keyCode);
+            }
+            //is string
+            return Container.CreateItem<string>(val);
+        }
+
+        public static Container.ItemArray ParseArray(string[] val)
+        {
+            var array = Container.CreateArray(val.Length) as Container.ItemArray;
+            for (int i = 0; i < val.Length; i++)
+            {
+                var item = ParseSimple(val[i]);
+                array[i] = item;
+            }
+            return array;
+        }
+
+        public static Container.Item FlattenArray(Container.ItemArray array)
+        {
+            var type = array.items[0].Type;
+            if (type == typeof(int))
+            {
+                return FlattenArrayIterator<int>(array);
+            }
+            else if (type == typeof(float))
+            {
+                return FlattenArrayIterator<float>(array);
+            }
+            else if (type == typeof(bool))
+            {
+                return FlattenArrayIterator<bool>(array);
+            }
+            else if (type == typeof(KeyCode))
+            {
+                return FlattenArrayIterator<KeyCode>(array);
+            }
+            else
+            {
+                return FlattenArrayIterator<string>(array);
+            }
+        }
+
+        public static Container.Item FlattenArrayIterator<T>(Container.ItemArray array)
+        {
+            var array_ = new List<T>();
+            foreach (var item in array.items)
+            {
+                if (item.Type == typeof(T))
+                    array_.Add((item as Container.ItemPayload<T>).Payload);
+            }
+            return Container.CreateItem<T[]>(array_.ToArray());
+        }
+
+        public static bool TryParseBool(string val, out bool boolRes)
+        {
+            if (System.Array.IndexOf(boolsTrue, val.ToLower()) > -1)
+            {
+                boolRes = true;
+                return true;
+            }
+            else if (System.Array.IndexOf(boolsFalse, val.ToLower()) > -1)
+            {
+                boolRes = false;
+                return true;
+            }
+            boolRes = false;
+            return false;
+        }
+
+        public static bool TryParseBool(int val)
+        {
+            return val > 0;
+        }
+
+        public static bool TryParseBool(float val)
+        {
+            return val > 0f;
+        }
+
+        public static void ParseVal(string name, string val)
+        {
+            if (CheckIfString(val))
+            {
+                //it may only be a string, don't check for other symbols
+                val = val.Replace("\"", "").Replace("'", "");
+                container.Add<string>(name, val);
+                return;
+            }
+            if (val.Contains(",") || val.Contains(":"))
+            {
+                //it is array or range
+                string[] valA = new string[0];
+                if (val.Contains(","))
+                {
+                    valA = val.Split(","[0]);
+                }
+                else if (val.Contains(":"))
+                {
+                    valA = val.Split(":"[0]);
+                }
+                if (valA.Length == 1)
+                {
+                    //a single value, not an array
+                    container.AddItem(name, ParseSimple(valA[0]));
                 }
                 else
                 {
-                    float _out;
-                    if (float.TryParse(val, out _out))
-                    {
-                        if (val.Contains("."))
-                        {
-                            InsertFloatRaw(key, val);
-                        }
-                        else
-                        {
-                            InsertIntRaw(key, val);
-                        }
-                    }
-                    else
-                    {
-                        if (val.ToLower() == "true" || val.ToLower() == "false")
-                        {
-                            InsertBoolRaw(key, val);
-                        }
-                        else
-                        {
-                            InsertStringRaw(key, val);
-                        }
-                    }
+                    //an array
+                    var array = ParseArray(valA);
+                    //container.Add(name, FlattenArray(array));
+                    container.AddItem(name, array);
                 }
-            } else if (lineSrc.Length == 1) {
-                //if comment line
-                key = lineSrc[0].Trim();
-                string[] key_ = key.Split(new string[] {commentDivider}, System.StringSplitOptions.None);
-                if (key_.Length == 2) {
-                    return ParseVariables(key_[1]);
+                return;
+            }
+            //is single value
+            container.AddItem(name, ParseSimple(val));
+        }
+
+        public static bool CheckIfString(string val) {
+            bool isString = false;
+            int q = 0;
+            foreach (var c in val) {
+                if (c == '\"' || c == '\'') {
+                    q++;
+                    isString = !isString;
                 }
             }
-            return true;
-        });
-    }
-
-    public static void LoadAdditional(string file)
-    {
-        Load(file, false);
-    }
-
-    public static void Write(string path, Dictionary<string, string> data)
-    {
-        List<string> list = new List<string>();
-        foreach (var line in data)
-        {
-            list.Add(line.Key + " = " + line.Value);
+            return q > 0 && ((!isString && q <= 2) || (isString && q > 2));
         }
-        FileReader.Write(path, list);
+
+        public static string AllFilesNames()
+        {
+            return System.String.Join(", ", cfgFiles);
+        }
+        #endregion
+
+        #region Loaders
+        public static void Load(string file, bool clear = true)
+        {
+            if (clear)
+                Clear();
+            FileReader.Read(file, (line) =>
+            {
+                string key;
+                string val;
+                string[] lineSrc = line.Split('=');
+                if (lineSrc.Length > 1)
+                {
+                //if variable line
+                key = lineSrc[0].Trim();
+                    val = lineSrc[1].Trim();
+
+                    string[] val_ = val.Split(new string[] { commentDivider }, System.StringSplitOptions.None);
+                    val = val_[0];
+
+                    ParseVal(key, val);
+                }
+                else if (lineSrc.Length == 1)
+                {
+                //if comment line
+                key = lineSrc[0].Trim();
+                    string[] key_ = key.Split(new string[] { commentDivider }, System.StringSplitOptions.None);
+                    if (key_.Length == 2)
+                    {
+                        return ParseVariables(key_[1]);
+                    }
+                }
+                return true;
+            });
+        }
+
+        public static void LoadAdditional(string file)
+        {
+            Load(file, false);
+        }
+
+        public static void Write(string path, Dictionary<string, string> data)
+        {
+            List<string> list = new List<string>();
+            foreach (var line in data)
+            {
+                list.Add(line.Key + " = " + line.Value);
+            }
+            FileReader.Write(path, list);
+        }
+        #endregion
     }
-
-}
-
 }

@@ -1,9 +1,11 @@
 # Unity_CFG
-A simple class to store different settings in .ini (or any other extension) plain text format.
+A simple class to store different settings in .fmcfg (or any other extension) plain text format.
 
-Version 1.3 supports the following data formats: string, int, float, bool, string/int/float arrays and lists, Vector2, Vector2Int, Vector3 and random between two (see the usage example).
+Version 1.4 supports the following data formats:
 
-During testing, you can change settings and update them in game with `LoadConfig()` command (for example, from the Console).
+string, int, float, bool, KeyCode, string/int/float/bool/KeyCode arrays and lists, Vector2, Vector2Int, Vector3, Vector3Int and randoms between two (see the usage example).
+
+During testing, you can change settings and update them in a game with `LoadConfig()` command (for example, from the Console).
 
 ## Usage
 
@@ -15,6 +17,7 @@ BoardSize = 10:10 #Size of the board: width, height
 TurnsTotal = 128
 HeroName = "Captain Jack"
 HeroStartHealth = 0.1:0.9
+ExitKey = Esc
 ```
 
 To be able to fold regions in VSCode
@@ -22,7 +25,7 @@ To be able to fold regions in VSCode
 ```
 #> World settings
 Setting1 = 1
-Setting2 = 2.1
+Setting2List = 2,1,3
 #<
 ```
 
