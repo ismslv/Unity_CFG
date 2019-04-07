@@ -15,7 +15,7 @@ New in this version: generic Enums.
 
 Store settings in .fmcfg file like this:
 
-```fmcfg
+```ini
 #Config.fmcfg
 
 BoardSize = 10:10 #Size of the board: width, height
@@ -26,7 +26,7 @@ ExitKey = Esc
 ```
 
 To be able to fold regions in VSCode
-```fmcfg
+```ini
 #> World settings
 Setting1 = 1
 Setting2List = 2,1,3
@@ -34,13 +34,13 @@ Setting2List = 2,1,3
 ```
 
 ## Spells
-```fmcfg
+```ini
 #name Hardcore
 ```
 
 Defines a config name to show in the debugger
 
-```fmcfg
+```ini
 #stop
 ```
 
@@ -48,7 +48,7 @@ Stops config reading at this line.
 
 If placed on top, disables all file and does not register it's name.
 
-```fmcfg
+```ini
 key, mouse, joystick, axisbutton
 ```
 
