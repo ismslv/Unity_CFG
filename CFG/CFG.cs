@@ -1,8 +1,8 @@
 ﻿/* CONFIG FILE READER
  * READS, PARSES AND STORES
  * DATA FROM *.FMCFG FILES
- * V1.4
- * FMLHT, 04.04.2019
+ * V1.5
+ * FMLHT, 06.04.2019
  */
 
 namespace FMLHT.Config
@@ -51,8 +51,13 @@ namespace FMLHT.Config
             }
             public bool TryGet(string name, out Item item)
             {
-                item = items[name];
-                return Has(name);
+                if (Has(name)) {
+                    item = items[name];
+                    return true;
+                } else {
+                    item = null;
+                    return false;
+                }
             }
             public static Item CreateItem<T>(T value)
             {
@@ -89,6 +94,7 @@ namespace FMLHT.Config
                 public ItemArray(int length)
                 {
                     items = new Item[length];
+                    Type = typeof(Container.ItemArray);
                     IsArray = true;
                 }
                 public Item this[int i]
@@ -156,6 +162,36 @@ namespace FMLHT.Config
             return ZeroValueOf<string>();
         }
 
+        public static Color C(string name)
+        {
+            string c_ = "#" + S(name);
+            Color color = Color.white;
+            if (ColorUtility.TryParseHtmlString(c_, out color)) {
+                return color;
+            }
+            return color;
+        }
+
+        public static bool E<T>(string name, out T res) where T : struct {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetEnumOfType<T>(item, out res);
+            }
+            res = (T)(object)0;
+            return false;
+        }
+
+        public static bool AE<T>(string name, out T[] res) where T : struct {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetArrayEnumOfType<T>(item, out res);
+            }
+            res = new T[0];
+            return false;
+        }
+
         public static string[] AS(string name)
         {
             Container.Item item;
@@ -163,7 +199,7 @@ namespace FMLHT.Config
             {
                 return GetArrayOf<string>(item);
             }
-            return ZeroValueOf<string[]>();
+            return ZeroValueOfArrayOf<string>();
         }
 
         public static List<string> LS(string name)
@@ -188,7 +224,7 @@ namespace FMLHT.Config
             {
                 return GetArrayOf<int>(item);
             }
-            return ZeroValueOf<int[]>();
+            return ZeroValueOfArrayOf<int>();
         }
 
         public static List<int> LI(string name)
@@ -213,7 +249,7 @@ namespace FMLHT.Config
             {
                 return GetArrayOf<float>(item);
             }
-            return ZeroValueOf<float[]>();
+            return ZeroValueOfArrayOf<float>();
         }
 
         public static List<float> LF(string name)
@@ -288,7 +324,7 @@ namespace FMLHT.Config
             {
                 return GetArrayOf<bool>(item);
             }
-            return ZeroValueOf<bool[]>();
+            return ZeroValueOfArrayOf<bool>();
         }
 
         public static List<bool> LB(string name)
@@ -308,7 +344,7 @@ namespace FMLHT.Config
             {
                 return GetArrayOf<KeyCode>(item);
             }
-            return ZeroValueOf<KeyCode[]>();
+            return ZeroValueOfArrayOf<KeyCode>();
         }
 
         public static List<KeyCode> LK(string name)
@@ -330,7 +366,7 @@ namespace FMLHT.Config
                 }
                 return arrayRes;
             }
-            return new T[0];
+            return new T[1] {GetValueOf<T>(item)};
         }
 
         static T GetValueOf<T>(Container.Item item)
@@ -400,27 +436,11 @@ namespace FMLHT.Config
             {
                 return (T)System.Convert.ChangeType(KeyCode.None, typeof(T));
             }
-            else if (typeof(T) == typeof(int[]))
-            {
-                return (T)System.Convert.ChangeType(new int[0], typeof(T));
-            }
-            else if (typeof(T) == typeof(float[]))
-            {
-                return (T)System.Convert.ChangeType(new float[0], typeof(T));
-            }
-            else if (typeof(T) == typeof(string[]))
-            {
-                return (T)System.Convert.ChangeType(new string[0], typeof(T));
-            }
-            else if (typeof(T) == typeof(bool[]))
-            {
-                return (T)System.Convert.ChangeType(new bool[0], typeof(T));
-            }
-            else if (typeof(T) == typeof(KeyCode[]))
-            {
-                return (T)System.Convert.ChangeType(new KeyCode[0], typeof(T));
-            }
             return (T)System.Convert.ChangeType(false, typeof(T));
+        }
+
+        static T[] ZeroValueOfArrayOf<T>() {
+            return new T[0];
         }
 
         static T GetRandomFromArrayOf<T>(Container.Item item)
@@ -510,37 +530,20 @@ namespace FMLHT.Config
             {
                 return item.GetValue<float>().ToString();
             }
-            if (item.Is<int[]>())
+            if (item.Is<bool>())
             {
-                var array = item.GetValue<int[]>();
-                var s = "";
-                for (int i = 0; i < array.Length; i++)
-                {
-                    s += i.ToString();
-                    if (i != array.Length - 1)
-                        s += ",";
-                }
-                return s;
-            }
-            if (item.Is<float[]>())
-            {
-                var array = item.GetValue<float[]>();
-                var s = "";
-                for (int i = 0; i < array.Length; i++)
-                {
-                    s += i.ToString();
-                    if (i != array.Length - 1)
-                        s += ",";
-                }
-                return s;
-            }
-            if (item.Is<string[]>())
-            {
-                return System.String.Join(", ", item.GetValue<string[]>());
+                return item.GetValue<bool>().ToString();
             }
             if (item.Is<KeyCode>())
             {
                 return item.GetValue<KeyCode>().ToString();
+            }
+            if (item.IsArray) {
+                var s = new List<string>();
+                foreach (var i in (item as Container.ItemArray).items) {
+                    s.Add(GetString(i));
+                }
+                return System.String.Join(",", s);
             }
             return ZeroValueOf<string>();
         }
@@ -559,6 +562,44 @@ namespace FMLHT.Config
                 }
             }
             return ZeroValueOf<KeyCode>();
+        }
+
+        static bool GetEnumOfType<T>(Container.Item item, out T res) where T : struct
+        {
+            if (item.Is<string>())
+            {
+                if (System.Enum.TryParse<T>(item.GetValue<string>(), out res)) {
+                    return true;
+                }
+            }
+            res = (T)(object)0;
+            return false;
+        }
+
+        static bool GetArrayEnumOfType<T>(Container.Item item, out T[] array) where T : struct
+        {
+            if (item.IsArray)
+            {
+                var arraySrc = (item as Container.ItemArray);
+                var arrayRes = new List<T>();
+                for (int i = 0; i < arraySrc.items.Length; i++)
+                {
+                    T res;
+                    if (GetEnumOfType<T>(arraySrc.items[i], out res)) {
+                        arrayRes.Add(res);
+                    }
+                }
+                array = arrayRes.ToArray();
+                return true;
+            } else {
+                T res;
+                if (GetEnumOfType<T>(item, out res)) {
+                    array = new T[1]{res};
+                    return true;
+                }
+            }
+            array = new T[0];
+            return false;
         }
 
         static string[] GetArrayString(Container.Item item)
@@ -828,6 +869,7 @@ namespace FMLHT.Config
         #region Loaders
         public static void Load(string file, bool clear = true)
         {
+            System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-US");
             if (clear)
                 Clear();
             FileReader.Read(file, (line) =>
@@ -838,9 +880,9 @@ namespace FMLHT.Config
                 if (lineSrc.Length > 1)
                 {
                 //if variable line
+                
                 key = lineSrc[0].Trim();
                     val = lineSrc[1].Trim();
-
                     string[] val_ = val.Split(new string[] { commentDivider }, System.StringSplitOptions.None);
                     val = val_[0];
 

@@ -1,16 +1,21 @@
 # Unity_CFG
 A simple class to store different settings in .fmcfg (or any other extension) plain text format.
 
-Version 1.4 supports the following data formats:
+## Has a [VSCode extension](https://marketplace.visualstudio.com/items?itemName=FMLHT.fmcfg)
+
+Version 1.5 supports the following data formats:
 
 string, int, float, bool, KeyCode, string/int/float/bool/KeyCode arrays and lists, Vector2, Vector2Int, Vector3, Vector3Int and randoms between two (see the usage example).
 
-During testing, you can change settings and update them in a game with `LoadConfig()` command (for example, from the Console).
+New in this version: generic Enums.
+
+
 
 ## Usage
 
 Store settings in .fmcfg file like this:
-```
+
+```fmcfg
 #Config.fmcfg
 
 BoardSize = 10:10 #Size of the board: width, height
@@ -21,8 +26,7 @@ ExitKey = Esc
 ```
 
 To be able to fold regions in VSCode
-(using https://marketplace.visualstudio.com/items?itemName=FMLHT.fmcfg)
-```
+```fmcfg
 #> World settings
 Setting1 = 1
 Setting2List = 2,1,3
@@ -30,19 +34,31 @@ Setting2List = 2,1,3
 ```
 
 ## Spells
-```
+```fmcfg
 #name Hardcore
 ```
 
 Defines a config name to show in the debugger
 
-```
+```fmcfg
 #stop
 ```
 
 Stops config reading at this line.
 
 If placed on top, disables all file and does not register it's name.
+
+```fmcfg
+key, mouse, joystick, axisbutton
+```
+
+Autocompletes the lists of input values.
+
+Keys according to [Unity KeyCodes](https://docs.unity3d.com/ScriptReference/KeyCode.html)
+
+Mouse: Left, Right, Middle
+
+Joystick and axisbutton add support for FMLHT input module (link will be here upon a release)
 
 ## Adding to a project
 To get these settings,
@@ -61,7 +77,17 @@ float healthHero2 = V2Rand("HeroStartHealth");
 ```
 
 Also, it automatically loads if flag "loadOnAwake" is set on true.
+
 String option "configFile" sets the base name (by default, "Config").
+
 Then, "Config.fmcfg" will carry base configurations.
-You can also add any amount of additional "Config_test1.fmcfg" files,
-that will be loaded upon the base, overwriting what doubles.
+You can also add any amount of additional "Config_test1.fmcfg" files, that will be loaded upon the base, overwriting what doubles.
+
+## Generic enums
+
+To parse generic enums:
+
+```csharp
+CharacterState state = CFG.E<CharacterState>("Hero_StateStart");
+CharacterState[] states = CFG.AE<CharacterState>("Monster_StatesOrder");
+```
