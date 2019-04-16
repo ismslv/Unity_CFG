@@ -1,4 +1,5 @@
 # Unity_CFG
+![Screenshot](Screenshot.jpg)
 A simple class to store different settings in .fmcfg (or any other extension) plain text format.
 
 ## Has a [VSCode extension](https://marketplace.visualstudio.com/items?itemName=FMLHT.fmcfg)
