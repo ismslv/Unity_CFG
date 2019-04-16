@@ -1,8 +1,8 @@
 ﻿/* CONFIG FILE READER
  * READS, PARSES AND STORES
  * DATA FROM *.FMCFG FILES
- * V1.5
- * FMLHT, 06.04.2019
+ * V1.53
+ * FMLHT, 11.04.2019
  */
 
 namespace FMLHT.Config
@@ -12,14 +12,19 @@ namespace FMLHT.Config
     using UnityEngine;
     using System.IO;
     using System.Linq;
+    using System.Text.RegularExpressions;
 
     public static class CFG
     {
-        static List<string> cfgFiles;
+        static Dictionary<string, int> cfgFiles;
         static Container container;
         static string[] boolsTrue = new string[] { "true", "yes", "ok", "da", "oui", "y" };
         static string[] boolsFalse = new string[] { "false", "no", "net", "non", "n" };
         public static string commentDivider = "#";
+        public static string currentFile = "";
+
+        public static bool isPacked;
+        static string LINE_SPLIT_RE = @"\r\n|\n\r|\n|\r";
 
         public class Container
         {
@@ -164,12 +169,21 @@ namespace FMLHT.Config
 
         public static Color C(string name)
         {
-            string c_ = "#" + S(name);
-            Color color = Color.white;
-            if (ColorUtility.TryParseHtmlString(c_, out color)) {
-                return color;
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetColor(item);
             }
-            return color;
+            return ZeroValueOf<Color>();
+        }
+
+        public static Color[] AC(string name) {
+            Container.Item item;
+            if (container.TryGet(name, out item))
+            {
+                return GetArrayOf<Color>(item);
+            }
+            return ZeroValueOfArrayOf<Color>();
         }
 
         public static bool E<T>(string name, out T res) where T : struct {
@@ -383,6 +397,10 @@ namespace FMLHT.Config
             {
                 return (T)System.Convert.ChangeType(GetString(item), typeof(T));
             }
+            else if (typeof(T) == typeof(Color))
+            {
+                return (T)System.Convert.ChangeType(GetColor(item), typeof(T));
+            }
             else if (typeof(T) == typeof(bool))
             {
                 return (T)System.Convert.ChangeType(GetBool(item), typeof(T));
@@ -427,6 +445,10 @@ namespace FMLHT.Config
             else if (typeof(T) == typeof(string))
             {
                 return (T)System.Convert.ChangeType("", typeof(T));
+            }
+            else if (typeof(T) == typeof(Color))
+            {
+                return (T)System.Convert.ChangeType(Color.black, typeof(T));
             }
             else if (typeof(T) == typeof(bool))
             {
@@ -546,6 +568,19 @@ namespace FMLHT.Config
                 return System.String.Join(",", s);
             }
             return ZeroValueOf<string>();
+        }
+
+        static Color GetColor(Container.Item item)
+        {
+            Color color = ZeroValueOf<Color>();
+            if (item.Is<string>())
+            {
+                string c_ = "#" + item.GetValue<string>();
+                if (ColorUtility.TryParseHtmlString(c_, out color)) {
+                    return color;
+                }
+            }
+            return color;
         }
 
         static KeyCode GetKeyCode(Container.Item item)
@@ -686,7 +721,7 @@ namespace FMLHT.Config
 
         public static void Clear()
         {
-            cfgFiles = new List<string>();
+            cfgFiles = new Dictionary<string, int>();
             container = new Container();
         }
 
@@ -696,8 +731,10 @@ namespace FMLHT.Config
             switch (val_[0])
             {
                 case "name":
-                    if (val_.Length > 1)
-                        cfgFiles.Add(val_[1]);
+                    if (val_.Length > 1) {
+                        cfgFiles[val_[1]] = 0;
+                        currentFile = val_[1];
+                    }
                     break;
                 case "stop":
                     return false;
@@ -708,6 +745,13 @@ namespace FMLHT.Config
         public static Container.Item ParseSimple(string val)
         {
             val = val.Trim();
+            if (val[0] == '\"' || val[0] == '\'') {
+                //is string
+                val = val.Remove(0, 1);
+                if (val[val.Length - 1] == '\"' || val[val.Length - 1] == '\'')
+                    val = val.Remove(val.Length - 1, 1);
+                return Container.CreateItem<string>(val);
+            }
             int _int;
             if (int.TryParse(val, out _int))
             {
@@ -862,49 +906,70 @@ namespace FMLHT.Config
 
         public static string AllFilesNames()
         {
-            return System.String.Join(", ", cfgFiles);
+            var res = new List<string>();
+            foreach (var c in cfgFiles) {
+                res.Add(c.Key + ":" + c.Value);
+            }
+            return string.Join(", ", res);
         }
         #endregion
 
         #region Loaders
-        public static void Load(string file, bool clear = true)
-        {
+        public static void LoadFromFile(string file, bool clear = true) {
             System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-US");
             if (clear)
                 Clear();
-            FileReader.Read(file, (line) =>
-            {
-                string key;
-                string val;
-                string[] lineSrc = line.Split('=');
-                if (lineSrc.Length > 1)
-                {
-                //if variable line
-                
-                key = lineSrc[0].Trim();
-                    val = lineSrc[1].Trim();
-                    string[] val_ = val.Split(new string[] { commentDivider }, System.StringSplitOptions.None);
-                    val = val_[0];
-
-                    ParseVal(key, val);
-                }
-                else if (lineSrc.Length == 1)
-                {
-                //if comment line
-                key = lineSrc[0].Trim();
-                    string[] key_ = key.Split(new string[] { commentDivider }, System.StringSplitOptions.None);
-                    if (key_.Length == 2)
-                    {
-                        return ParseVariables(key_[1]);
-                    }
-                }
-                return true;
-            });
+            currentFile = "";
+            if (File.Exists(file)) {
+                FileReader.Read(file, (line) => {
+                    return Load(line);
+                });
+            }
         }
 
-        public static void LoadAdditional(string file)
+        public static void LoadFromAsset(string name, bool clear = true) {
+            System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-US");
+            if (clear)
+                Clear();
+            currentFile = "";
+            var asset = (TextAsset)Resources.Load<TextAsset>("Config/" + name);
+            if (asset != null) {
+                isPacked = true;
+                var lines = Regex.Split(asset.text, LINE_SPLIT_RE);
+                foreach (var l in lines) {
+                    var success = Load(l);
+                    if (!success) break;
+                }
+            }
+        }
+
+        public static bool Load(string line)
         {
-            Load(file, false);
+            string key;
+            string val;
+            string[] lineSrc = line.Split('=');
+            if (lineSrc.Length > 1)
+            {
+                //if variable line
+                key = lineSrc[0].Trim();
+                val = lineSrc[1].Trim();
+                string[] val_ = val.Split(new string[] { commentDivider }, System.StringSplitOptions.None);
+                val = val_[0];
+
+                ParseVal(key, val);
+                if (currentFile != "") cfgFiles[currentFile]++;
+            }
+            else if (lineSrc.Length == 1)
+            {
+                //if comment line
+                key = lineSrc[0].Trim();
+                string[] key_ = key.Split(new string[] { commentDivider }, System.StringSplitOptions.None);
+                if (key_.Length == 2)
+                {
+                    return ParseVariables(key_[1]);
+                }
+            }
+            return true;
         }
 
         public static void Write(string path, Dictionary<string, string> data)

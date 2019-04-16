@@ -13,6 +13,9 @@ public class CFGLoader : MonoBehaviour {
     public string extension = "fmcfg";
     public bool loadAdditional = true;
     public bool loadOnAwake = true;
+    public bool loadBasePacked;
+
+    public string BaseFile = "";
 
     private void Awake()
     {
@@ -47,13 +50,18 @@ public class CFGLoader : MonoBehaviour {
 
     public void LoadConfig()
     {
-        string cfgMain = UnityEngine.Application.dataPath + "/" + configFile + "." + extension;
-        CFG.Load(cfgMain);
+        string cfgMain = "";
+        if (loadBasePacked) {
+            CFG.LoadFromAsset(configFile);
+        } else {
+            cfgMain = UnityEngine.Application.dataPath + "/" + configFile + "." + extension;
+            CFG.LoadFromFile(cfgMain);
+        }
         if (loadAdditional) {
             var files = Directory.GetFiles(UnityEngine.Application.dataPath + "/", configFile + "*" + "." + extension);
             foreach (var file in files) {
                 if (file != cfgMain) {
-                    CFG.LoadAdditional(file);
+                    CFG.LoadFromFile(file, false);
                 }
             }
         }

@@ -3,7 +3,7 @@ A simple class to store different settings in .fmcfg (or any other extension) pl
 
 ## Has a [VSCode extension](https://marketplace.visualstudio.com/items?itemName=FMLHT.fmcfg)
 
-Version 1.5 supports the following data formats:
+Version 1.53 supports the following data formats:
 
 string, int, float, bool, KeyCode, string/int/float/bool/KeyCode arrays and lists, Vector2, Vector2Int, Vector3, Vector3Int and randoms between two (see the usage example).
 
